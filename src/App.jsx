@@ -2195,6 +2195,7 @@ function useAtlasCall(borough) {
         if (!window.firebase.apps.length) window.firebase.initializeApp(FIREBASE_CFG);
         dbRef.current    = window.firebase.database();
         agoraRef.current = window.AgoraRTC;
+        console.log("[ATLAS] SDKs loaded, Firebase + Agora ready, USER_ID:", USER_ID);
         setSdkReady(true);
       } catch(e) { console.error("SDK load failed", e); }
     }
@@ -2219,9 +2220,13 @@ function useAtlasCall(borough) {
 
     function handleCallSnap(snap) {
       const call = snap.val();
+      console.log("[ATLAS] call snap received:", snap.key, call);
       if (!call) return;
       if (call.caller !== USER_ID && call.status === "ringing") {
+        console.log("[ATLAS] showing incoming call from", call.caller);
         setIncomingCall(prev => prev ? prev : { callId: snap.key, borough: call.borough, callerId: call.caller });
+      } else {
+        console.log("[ATLAS] ignoring snap — caller matches us or status not ringing:", call.status, call.caller === USER_ID ? "(our call)" : "");
       }
     }
 
@@ -2233,15 +2238,18 @@ function useAtlasCall(borough) {
 
   // Start a call (caller side)
   async function startCall() {
+    console.log("[ATLAS] startCall — sdkReady:", sdkReady, "borough:", borough, "callState:", callState);
     if (!sdkReady || !borough || callState !== "idle") return;
     const db = dbRef.current;
     const callId = `call_${Date.now()}_${USER_ID}`;
     callIdRef.current = callId;
     setCallState("searching");
 
+    console.log("[ATLAS] writing call to Firebase:", `calls/${borough}/${callId}`);
     await db.ref(`calls/${borough}/${callId}`).set({
       caller: USER_ID, borough, status: "ringing", ts: Date.now(),
     });
+    console.log("[ATLAS] call written to Firebase");
 
     // Listen for answer
     db.ref(`calls/${borough}/${callId}/status`).on("value", async snap => {
