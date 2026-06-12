@@ -2214,17 +2214,19 @@ function useAtlasCall(borough) {
     const db = dbRef.current;
     const callsRef = db.ref(`calls/${borough}`);
 
-    callsRef.on("child_added", snap => {
+    function handleCallSnap(snap) {
       const call = snap.val();
       if (!call) return;
-      // Only show incoming if caller isn't us and call is ringing
-      if (call.caller !== USER_ID && call.status === "ringing" && callState === "idle") {
-        setIncomingCall({ callId: snap.key, borough: call.borough, callerId: call.caller });
+      if (call.caller !== USER_ID && call.status === "ringing") {
+        setIncomingCall(prev => prev ? prev : { callId: snap.key, borough: call.borough, callerId: call.caller });
       }
-    });
+    }
+
+    callsRef.on("child_added",   handleCallSnap);
+    callsRef.on("child_changed", handleCallSnap);
 
     return () => callsRef.off();
-  }, [sdkReady, borough, callState]);
+  }, [sdkReady, borough]);
 
   // Start a call (caller side)
   async function startCall() {
