@@ -610,13 +610,16 @@ function MapView({ regionId, onBack, borough }) {
   const bounds = regionBounds[regionId];
   const nycBoroughs = ["manhattan","brooklyn","queens","bronx","staten"];
   const liveUsers = usePresence(regionId);
-  // Use live users if any, fallback to fake for dev/demo
+  // Only show fake users in DEV mode when no real users present
+  const isDev = typeof DEV_BOROUGH === "string";
   const userPool = liveUsers.length > 0 ? liveUsers :
-    (nycBoroughs.includes(regionId) ? NYC_USERS : FAKE_USERS);
+    (isDev ? (nycBoroughs.includes(regionId) ? NYC_USERS : FAKE_USERS) : []);
   const regionUsers = userPool.filter(u =>
     !u.lon || (u.lon >= bounds.lonMin && u.lon <= bounds.lonMax &&
     u.lat >= bounds.latMin && u.lat <= bounds.latMax)
   );
+  // Real online count — always just live users
+  const onlineCount = liveUsers.length;
   const [jittered] = useState(() => regionUsers.map(u => {
     // If user has real coords use them, otherwise seed random from uid
     if (u.lon && u.lat) return { ...u };
@@ -987,7 +990,7 @@ function MapView({ regionId, onBack, borough }) {
       }}>
         <BackButton onBack={onBack} />
         <MapCycleTitle regionId={regionId} regionLabels={regionLabels} />
-        <div style={{ fontFamily:"'Courier New', monospace", color:YELLOW, fontSize:"13px", letterSpacing:"0.2em", opacity:0.8 }}>{regionUsers.length} ONLINE</div>
+        <div style={{ fontFamily:"'Courier New', monospace", color:YELLOW, fontSize:"13px", letterSpacing:"0.2em", opacity:0.8 }}>{onlineCount} ONLINE</div>
       </div>
 
       {connectedId === null && !hangPhase && regionUsers.length === 0 && (
