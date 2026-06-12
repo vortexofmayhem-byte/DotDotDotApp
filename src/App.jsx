@@ -1859,14 +1859,16 @@ function NYCPanel({ onRegion, scale = 1, userBorough }) {
             return (
               <g key={b.id}
                 onMouseEnter={() => setBHov(b.id)} onMouseLeave={() => setBHov(null)}
-                style={{ transformOrigin:`${b.cx}px ${b.cy}px`, transform:h?"scale(1.1)":"scale(1)", transition:"transform 0.22s cubic-bezier(0.34,1.4,0.64,1)", opacity: dimmed ? 0.2 : 1 }}
+                onClick={() => handleBoroughClick(b.id)}
+                style={{ transformOrigin:`${b.cx}px ${b.cy}px`, transform:h?"scale(1.1)":"scale(1)", transition:"transform 0.22s cubic-bezier(0.34,1.4,0.64,1)", opacity: dimmed ? 0.2 : 1, cursor:"pointer" }}
               >
+                {/* Large invisible hit area */}
+                <circle cx={b.cx} cy={b.cy} r={32} fill="transparent"/>
                 <path d={b.path}
                   fill={h?"rgba(255,224,0,0.2)":b.id===userBorough?"rgba(255,224,0,0.12)":"rgba(0,255,65,0.06)"}
                   stroke={h?YELLOW:b.id===userBorough?YELLOW:"rgba(0,255,65,0.4)"}
                   strokeWidth={h?1.5:b.id===userBorough?1:0.6}
-                  style={{cursor:"pointer",transition:"all 0.15s"}}
-                  onClick={()=>handleBoroughClick(b.id)}
+                  style={{transition:"all 0.15s"}}
                 />
               </g>
             );
