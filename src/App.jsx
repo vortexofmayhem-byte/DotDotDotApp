@@ -1438,8 +1438,16 @@ function DotScreen({ borough, callState, onCall, onHangUp, onCancel }) {
           onMouseDown={e => { e.preventDefault(); startDrag(e.clientX, e.clientY); }}
           onTouchStart={e => { e.preventDefault(); startDrag(e.touches[0].clientX, e.touches[0].clientY); }}
           onClick={() => {
-            if (phase === "idle") setPhase("searching");
-            else if (phase === "searching") { stopRinging(); setPhase("idle"); }
+            if (phase === "idle") {
+              setPhase("searching");
+              console.log("[ATLAS] dot tapped, calling onCall, borough:", borough);
+              if (onCall) onCall();
+            }
+            else if (phase === "searching") {
+              stopRinging();
+              setPhase("idle");
+              if (onCancel) onCancel();
+            }
           }}
           style={{
             position: "absolute",
