@@ -756,7 +756,6 @@ function MapView({ regionId, onBack, borough }) {
   function triggerAbsorb() {
     clearHangTimers();
     playGlobeHangUp();
-    if (onHangUp) onHangUp();
     setDragging(false);
     const id = connectedId;
     setHangPhase('sucking');
