@@ -2357,7 +2357,6 @@ export default function App() {
       if (DEV_BOROUGH !== null) {
         setBorough(DEV_BOROUGH);
         setLocStatus("nyc");
-        if (DEV_INCOMING) setIncomingCall({ borough: DEV_BOROUGH });
         return;
       }
       try {
