@@ -1837,10 +1837,8 @@ function NYCPanel({ onRegion, scale = 1, userBorough }) {
 
   // On mobile, tap overrides auto and goes to MapView
   function handleBoroughClick(id) {
-    if (isMobile) {
-      clearInterval(autoTimer.current);
-      onRegion && onRegion(id);
-    }
+    clearInterval(autoTimer.current);
+    onRegion && onRegion(id);
   }
 
   const hovBorough = BOROUGHS.find(b => b.id === bHov);
