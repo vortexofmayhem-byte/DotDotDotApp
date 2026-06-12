@@ -2225,20 +2225,31 @@ function useAtlasCall(borough) {
     const db = dbRef.current;
     const callsRef = db.ref(`calls/${borough}`);
 
-    function handleCallSnap(snap) {
+    // Listen for NEW calls (child_added) — only show if still ringing
+    callsRef.on("child_added", snap => {
       const call = snap.val();
-      console.log("[ATLAS] call snap received:", snap.key, call);
-      if (!call) return;
-      if (call.caller !== USER_ID && call.status === "ringing") {
-        console.log("[ATLAS] showing incoming call from", call.caller);
-        setIncomingCall(prev => prev ? prev : { callId: snap.key, borough: call.borough, callerId: call.caller });
-      } else {
-        console.log("[ATLAS] ignoring snap — caller matches us or status not ringing:", call.status, call.caller === USER_ID ? "(our call)" : "");
+      console.log("[ATLAS] child_added:", snap.key, call?.status, call?.caller);
+      if (!call || call.caller === USER_ID) return;
+      if (call.status === "ringing") {
+        console.log("[ATLAS] incoming call from", call.caller);
+        setIncomingCall({ callId: snap.key, borough: call.borough, callerId: call.caller });
       }
-    }
+    });
 
-    callsRef.on("child_added",   handleCallSnap);
-    callsRef.on("child_changed", handleCallSnap);
+    // Listen for status changes on existing calls
+    callsRef.on("child_changed", snap => {
+      const call = snap.val();
+      console.log("[ATLAS] child_changed:", snap.key, call?.status, call?.caller);
+      if (!call || call.caller === USER_ID) return;
+      if (call.status === "ringing") {
+        console.log("[ATLAS] incoming call (changed) from", call.caller);
+        setIncomingCall(prev => prev ? prev : { callId: snap.key, borough: call.borough, callerId: call.caller });
+      }
+      // If call was declined/cancelled, clear incoming
+      if (call.status === "cancelled" || call.status === "declined") {
+        setIncomingCall(prev => prev?.callId === snap.key ? null : prev);
+      }
+    });
 
     return () => callsRef.off();
   }, [sdkReady, borough]);
