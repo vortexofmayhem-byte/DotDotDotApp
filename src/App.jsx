@@ -494,7 +494,7 @@ function BackButton({ onBack }) {
 }
 
 // ─── MapView ──────────────────────────────────────────────────────────────────
-function MapView({ regionId, onBack }) {
+function MapView({ regionId, onBack, borough }) {
   const [connectedId, setConnectedId] = useState(null);
 
   // ── Pan state (canvas drag via any idle dot) ──
@@ -609,12 +609,26 @@ function MapView({ regionId, onBack }) {
   };
   const bounds = regionBounds[regionId];
   const nycBoroughs = ["manhattan","brooklyn","queens","bronx","staten"];
-  const userPool = nycBoroughs.includes(regionId) ? NYC_USERS : FAKE_USERS;
+  const liveUsers = usePresence(regionId);
+  // Use live users if any, fallback to fake for dev/demo
+  const userPool = liveUsers.length > 0 ? liveUsers :
+    (nycBoroughs.includes(regionId) ? NYC_USERS : FAKE_USERS);
   const regionUsers = userPool.filter(u =>
-    u.lon >= bounds.lonMin && u.lon <= bounds.lonMax &&
-    u.lat >= bounds.latMin && u.lat <= bounds.latMax
+    !u.lon || (u.lon >= bounds.lonMin && u.lon <= bounds.lonMax &&
+    u.lat >= bounds.latMin && u.lat <= bounds.latMax)
   );
-  const [jittered] = useState(() => regionUsers.map(u => ({ ...u })));
+  const [jittered] = useState(() => regionUsers.map(u => {
+    // If user has real coords use them, otherwise seed random from uid
+    if (u.lon && u.lat) return { ...u };
+    const seed = (u.uid || u.id || "").split("").reduce((a,c)=>a+c.charCodeAt(0),0);
+    const lonRange = bounds.lonMax - bounds.lonMin;
+    const latRange = bounds.latMax - bounds.latMin;
+    return {
+      ...u,
+      lon: bounds.lonMin + ((seed * 7919) % 1000) / 1000 * lonRange,
+      lat: bounds.latMin + ((seed * 6271) % 1000) / 1000 * latRange,
+    };
+  }));
 
   function userToPercent(u) {
     return {
@@ -1719,7 +1733,7 @@ function GlobeMode({ borough }) {
 
   const topLabel    = slide === "nyc" ? "NEW YORK CITY" : "PLANET EARTH";
 
-  if (region) return <MapView regionId={region} onBack={() => setRegion(null)} />;
+  if (region) return <MapView regionId={region} onBack={() => setRegion(null)} borough={borough} />;
 
   return (
     <div style={{ position:"relative", width:"100%", height:"100%", overflow:"hidden" }}>
@@ -2093,6 +2107,35 @@ function NavPill({ mode, onSwitch }) {
 }
 
 // ─── App ───────────────────────────────────────────────────────────────────────
+// ─── usePresence hook — reads live users from Firebase ───────────────────────
+function usePresence(borough) {
+  const [onlineUsers, setOnlineUsers] = useState([]);
+
+  useEffect(() => {
+    if (!borough) return;
+    // Wait for Firebase to be ready
+    let unsub = null;
+    const interval = setInterval(() => {
+      if (!window.firebase?.apps?.length) return;
+      clearInterval(interval);
+      const db = window.firebase.database();
+      const ref = db.ref(`presence/${borough}`);
+      ref.on("value", snap => {
+        const val = snap.val() || {};
+        const users = Object.values(val).filter(u => u.uid !== USER_ID);
+        setOnlineUsers(users);
+      });
+      unsub = () => ref.off();
+    }, 500);
+    return () => {
+      clearInterval(interval);
+      if (unsub) unsub();
+    };
+  }, [borough]);
+
+  return onlineUsers;
+}
+
 // ─── SDK config ──────────────────────────────────────────────────────────────
 const AGORA_APP_ID  = "e68f0a27092c43cdbe6cb804961b5cec";
 const AGORA_CERT    = "f803225c30d74c1fa4c603544db48e5f";
